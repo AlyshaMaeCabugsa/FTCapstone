@@ -1,11 +1,13 @@
-import React, { Component, useEffect, useState } from "react";
-import AdminHome from "./adminHome";
-
+//import React, { Component, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import UserHome from "./userHome";
+import AdminDashboard from './AdminDashboard';
+import { useNavigate } from 'react-router-dom';
 
 export default function UserDetails() {
   const [userData, setUserData] = useState("");
   const [admin, setAdmin] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch("http://localhost:5000/userData", {
@@ -25,6 +27,7 @@ export default function UserDetails() {
         console.log(data, "userData");
         if (data.data.userType == "Admin") {
           setAdmin(true);
+          navigate('/admin-dashboard');
         }
 
         setUserData(data.data);
@@ -37,5 +40,5 @@ export default function UserDetails() {
       });
   }, []);
 
-  return admin ? <AdminHome /> : <UserHome userData={userData} />;
+  return admin ? <AdminDashboard /> : <UserHome userData={userData} />;
 }
