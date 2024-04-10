@@ -1,9 +1,7 @@
-// models/Establishment.js
-
 const mongoose = require('mongoose');
 
 const establishmentSchema = new mongoose.Schema({
-  uniqueNumber: { type: String, required: true, unique: true },
+  uniqueNumber: { type: String, required: false, unique: true, sparse: true },
   tradeName: { type: String, required: true },
   ownerRepresentative: { type: String, required: true },
   address: { type: String, required: true },

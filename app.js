@@ -1,36 +1,49 @@
+require('dotenv').config();
 const express = require("express");
-const app = express();
 const mongoose = require("mongoose");
-app.use(express.json());
 const cors = require("cors");
-app.use(cors());
 const bcrypt = require("bcryptjs");
-app.set("view engine", "ejs");
+const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+
+const app = express();
+
+// CORS and Body Parsing Middlewares
+app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-const jwt = require("jsonwebtoken");
-var nodemailer = require("nodemailer");
+// View Engine Setup
+app.set("view engine", "ejs");
 
-const JWT_SECRET =
-  "hvdvay6ert72839289()aiyg8t87qt72393293883uhefiuh78ttq3ifi78272jbkj?[]]pou89ywe";
+// Routes
+const establishmentRoutes = require('./routes/establishment');
+const annualRecordsRoutes = require('./routes/annualRecord');
+const inspectionRoutes = require('./routes/inspection'); 
+const staffContactsRouter = require('./routes/staffContacts');
+const pdfRoutes = require('./routes/pdfRoutes');
 
-const mongoUrl =
-  "mongodb+srv://firestationopol:admin1234@cluster0.2kjhuql.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-mongoose
-  .connect(mongoUrl, {
-    useNewUrlParser: true,
-  })
-  .then(() => {
-    console.log("Connected to database");
-  })
-  .catch((e) => console.log(e));
+app.use('/api/establishments', establishmentRoutes);
+app.use('/api/annualrecords', annualRecordsRoutes);
+app.use('/api/inspections', inspectionRoutes);
+app.use('/api/staffContacts', staffContactsRouter);
+app.use('/pdf', pdfRoutes);
 
+
+// Database Connection
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log("Connected to database"))
+  .catch(e => {
+    console.error("Database connection error:", e);
+    process.exit(1); // Exit with an error
+  });
+
+// Additional Models
 require("./userDetails");
+require('./websocketServer');
+require('./services/reminderService.js');
 
-
-const annualRecordRoutes = require('./routes/annualRecordRoutes');
-app.use('/api/annualrecords', annualRecordRoutes);
 
 
 const User = mongoose.model("UserInfo");
@@ -60,50 +73,48 @@ app.post("/register", async (req, res) => {
 
 app.post("/login-user", async (req, res) => {
   const { email, password } = req.body;
-
   const user = await User.findOne({ email });
+  
   if (!user) {
-    return res.json({ error: "User Not found" });
+    return res.json({ status: "error", error: "User Not found" });
   }
+  
   if (await bcrypt.compare(password, user.password)) {
-    const token = jwt.sign({ email: user.email }, JWT_SECRET, {
+    const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
       expiresIn: "15m",
     });
 
-    if (res.status(201)) {
-      return res.json({ status: "ok", data: token });
-    } else {
-      return res.json({ error: "error" });
-    }
+    return res.json({ status: "ok", data: token });
   }
-  res.json({ status: "error", error: "InvAlid Password" });
+
+  return res.json({ status: "error", error: "Invalid Password" });
 });
 
 app.post("/userData", async (req, res) => {
   const { token } = req.body;
+  
   try {
-    const user = jwt.verify(token, JWT_SECRET, (err, res) => {
-      if (err) {
-        return "token expired";
-      }
-      return res;
-    });
-    console.log(user);
-    if (user == "token expired") {
-      return res.send({ status: "error", data: "token expired" });
+    // Correctly use the verify method without a callback to use it in a synchronous way
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Now that we have the decoded token, we can find the user based on the email
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).send({ status: "error", data: "User not found" });
     }
 
-    const useremail = user.email;
-    User.findOne({ email: useremail })
-      .then((data) => {
-        res.send({ status: "ok", data: data });
-      })
-      .catch((error) => {
-        res.send({ status: "error", data: error });
-      });
-  } catch (error) { }
-});
+    // If user is found, send the user data
+    return res.send({ status: "ok", data: user });
 
+  } catch (error) {
+    // If error is thrown from jwt.verify, it will be caught here
+    if (error instanceof jwt.TokenExpiredError) {
+      return res.status(401).send({ status: "error", data: "token expired" });
+    } else {
+      return res.status(500).send({ status: "error", data: "An error occurred" });
+    }
+  }
+});
 
 
 app.listen(5000, () => {

@@ -1,78 +1,98 @@
-// controllers/annualRecordController.js
+const AnnualRecord = require('../models/AnnualRecords'); // Ensure this path is correct
+const Establishment = require('../models/Establishment'); // Add this line to import the Establishment model
 
-const AnnualRecord = require('../models/AnnualRecords');
 
-// Create a new record for a given year
-const createRecord = async (req, res) => {
+exports.createAnnualRecord = async (req, res) => {
   try {
-    const newRecord = new AnnualRecord(req.body); // Assumes that all required fields are provided in the body
-    await newRecord.save();
-    res.status(201).json(newRecord);
+    const establishmentExists = await Establishment.findById(req.body.establishment);
+    if (!establishmentExists) {
+      return res.status(404).json({ message: "Establishment not found" });
+    }
+    
+    const record = new AnnualRecord(req.body);
+    await record.save();
+    res.status(201).json(record);
   } catch (error) {
-    res.status(400).json({ message: "Error creating record: " + error.message });
+    res.status(400).json({ message: "Error creating annual record: " + error.message });
   }
 };
 
-// Retrieve all records for a specific year
-const getRecordsByYear = async (req, res) => {
-  const { year } = req.params;
+exports.getAllAnnualRecords = async (req, res) => {
   try {
-    const records = await AnnualRecord.find({ year });
+    let query = {};
+    if (req.query.year) {
+      query.year = parseInt(req.query.year);
+    }
+    if (req.query.listType) {
+      query.listType = req.query.listType;
+    }
+
+    const records = await AnnualRecord.find(query).populate('establishment');
     res.status(200).json(records);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching records: " + error.message });
+    res.status(500).json({ message: "Error fetching annual records: " + error.message });
   }
 };
 
-// Update a specific record's details for the new year
-const duplicateAndUpdateRecordForNewYear = async (req, res) => {
-  const { previousYear, newYear, uniqueNumber, updates } = req.body;
-
+exports.getAnnualRecordsByYear = async (req, res) => {
+  const { year } = req.params; // Or req.query if you're using query parameters
   try {
-    const oldRecord = await AnnualRecord.findOne({ year: previousYear, uniqueNumber });
-    if (!oldRecord) {
-      return res.status(404).json({ message: "Previous year's record not found" });
-    }
-
-    const newRecordData = {
-      ...oldRecord.toObject(),
-      year: newYear,
-      ...updates // Apply any updates provided in the body
-    };
-
-    // Remove the _id from old record to ensure mongoose creates a new document
-    delete newRecordData._id; 
-
-    // If the old record is not supposed to carry forward some fields to the new year, explicitly delete them here
-    // For example: delete newRecordData.fieldName;
-
-    const newRecord = new AnnualRecord(newRecordData);
-    await newRecord.save();
-
-    res.status(201).json(newRecord);
+    const records = await AnnualRecord.find({ year: year }).populate('establishment');
+    res.json(records);
   } catch (error) {
-    res.status(500).json({ message: "Error updating record for new year: " + error.message });
+    res.status(500).send(error.message);
   }
 };
 
-// Delete a record
-const deleteRecord = async (req, res) => {
-  const { id } = req.params;
+exports.getAnnualRecordsByYear = async (req, res) => {
   try {
+    const { year } = req.params;
+    const records = await AnnualRecord.find({ year: parseInt(year) });
+    res.status(200).json(records);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching annual records for year: " + error.message });
+  }
+};
+
+exports.updateAnnualRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await AnnualRecord.findByIdAndUpdate(id, req.body, { new: true });
+    if (!record) {
+      return res.status(404).json({ message: "Annual record not found" });
+    }
+    res.status(200).json(record);
+  } catch (error) {
+    res.status(400).json({ message: "Error updating annual record: " + error.message });
+  }
+};
+
+exports.deleteAnnualRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
     const result = await AnnualRecord.findByIdAndDelete(id);
     if (!result) {
-      return res.status(404).json({ message: "Record not found" });
+      return res.status(404).json({ message: "Annual record not found" });
     }
-    res.status(204).send(); // No content
+    res.status(204).send();
   } catch (error) {
-    res.status(500).json({ message: "Error deleting record: " + error.message });
+    res.status(500).json({ message: "Error deleting annual record: " + error.message });
   }
 };
 
-module.exports = {
-  createRecord,
-  getRecordsByYear,
-  duplicateAndUpdateRecordForNewYear,
-  deleteRecord
+// Add a function to fetch establishment details by ID
+exports.getEstablishmentById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
+    const establishment = await Establishment.findById(id);
+    if (!establishment) {
+      return res.status(404).json({ message: "Establishment not found" });
+    }
+    res.status(200).json(establishment);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching establishment: " + error.message });
+  }
 };
-
