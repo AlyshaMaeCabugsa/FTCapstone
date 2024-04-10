@@ -1,8 +1,12 @@
-import React, { Component, useState } from "react";
+import { Link } from 'react-router-dom';
+import React, { useState } from "react";
+import { useNavigate } from 'react-router-dom';
+import './SignInSignUp.css';
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate(); 
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -21,17 +25,18 @@ export default function Login() {
         password,
       }),
     })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log(data, "userRegister");
-        if (data.status == "ok") {
-          alert("login successful");
-          window.localStorage.setItem("token", data.data);
-          window.localStorage.setItem("loggedIn", true);
-
-          window.location.href = "./userDetails";
-        }
-      });
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status === "ok") {
+        localStorage.setItem("token", data.data);
+        localStorage.setItem("loggedIn", true);
+        // Calculate the expiration time and set it
+        localStorage.setItem('expiresAt', Date.now() + (60 * 60 * 1000)); // 1 hour from now
+        navigate("/admin-dashboard"); // Navigate to the dashboard using the navigate function
+      } else {
+        // Handle the error, such as showing an error message
+      }
+    });
   }
 
   return (
@@ -79,7 +84,7 @@ export default function Login() {
             </button>
           </div>
           <p className="forgot-password text-right">
-            <a href="/sign-up">Sign Up</a>
+            <Link to="/signup">Sign Up</Link>
           </p>
         </form>
       </div>

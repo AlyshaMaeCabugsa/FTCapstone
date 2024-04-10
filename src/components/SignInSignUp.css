@@ -1,0 +1,91 @@
+/* Container for the entire sign-in area */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #ecf0f1; /* Light grey background */
+  }
+  
+  /* Styling for the sign-in box */
+  .auth-inner {
+    width: 400px;
+    background: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: left;
+  }
+  
+  /* Spacing and style for each form group */
+  .auth-inner .form-group {
+    margin-bottom: 20px;
+  }
+  
+  /* Style for the labels */
+  .auth-inner label {
+    margin-bottom: 5px;
+    display: block;
+    color: #333;
+    font-weight: 600;
+  }
+  
+  /* Style for input fields */
+  .auth-inner input {
+    border-radius: 5px;
+    border: 1px solid #dcdcdc;
+    padding: 10px;
+    width: 100%;
+  }
+  
+  /* Style for the submit button */
+  .auth-inner button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    background-color: #3498db;
+    color: white;
+    font-weight: 600;
+  }
+  
+  /* Hover effect for the button */
+  .auth-inner button:hover {
+    background-color: #2980b9;
+  }
+  
+  /* Link style */
+  .auth-inner .forgot-password {
+    text-align: right;
+    display: block;
+    margin-top: 20px;
+  }
+  
+  .auth-inner .forgot-password a {
+    color: #3498db;
+    text-decoration: none;
+  }
+  
+  .auth-inner .forgot-password a:hover {
+    text-decoration: underline;
+  }
+
+  /* Inside your CSS file */
+
+  
+  .radio-inline {
+    display: inline-block; /* Place label and radio on the same line */
+    margin-right: 10px; /* Space after each radio button */
+  }
+  
+  .radio-inline label {
+    margin-left: 5px; /* Space after the radio button */
+    font-size: 1rem; /* Font size of the label */
+  }
+  
+  /* Style for the radio buttons themselves */
+  .radio-inline input[type="radio"] {
+    margin-top: 2px; /* Align the radio button vertically with the label */
+  }
+  
+  

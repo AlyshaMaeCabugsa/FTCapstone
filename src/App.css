@@ -1,7 +1,72 @@
+/* App.css - Remove or comment out flexbox layout styles that conflict with Material-UI Drawer */
+/*
 .App {
+  display: flex; 
+  flex-direction: row; 
   text-align: center;
+  min-height: 100vh;
+}
+*/
+
+/* Remove sidebar ID styles since Material-UI Drawer will be used */
+/*
+#sidebar {
+  margin-top: 70px;
+  width: 250px;
+  background-color: #2c3e50;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
 }
 
+#sidebar a {
+  padding: 1rem;
+  color: white;
+  text-decoration: none;
+}
+
+#sidebar a:hover {
+  background-color: #34495e;
+}
+*/
+
+/* Remove notification container styles since Material-UI will handle this */
+/*
+.notification-container {
+  background-color: #2c3e50;
+  color: white;
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+*/
+
+/* Adjust main content if necessary or remove if handled by Material-UI */
+/*
+.main-content {
+  margin-top: 70px; 
+  flex-grow: 1;
+  background-color: white;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 70px); 
+}
+*/
+
+/* Keep your custom animations or logo styles */
+.App {
+  display: flex;
+  flex-direction: row;
+  min-height: 100vh; /* Full viewport height */
+}
+
+/* Remove this if you don't have an App-logo animation */
 .App-logo {
   height: 40vmin;
   pointer-events: none;
@@ -13,13 +78,37 @@
   }
 }
 
+/* The main content should be pushed down below the AppBar and to the right of the Sidebar */
+.main-content {
+  flex-grow: 1;
+  padding: 20px;
+  margin-top: 64px; /* Height of the AppBar */
+  margin-left: 250px; /* Width of the Sidebar */
+  overflow-y: auto; /* Scrollable content */
+  background-color: #f7f7f7; /* Light gray background */
+}
+
+/* AppBar styles */
+.AppBar {
+  z-index: 1200; /* High enough to be above Sidebar and main content */
+}
+
+/* Sidebar styles */
+.Sidebar {
+  width: 250px; /* Width of the Sidebar */
+  height: calc(100vh - 80px); /* Full height minus AppBar height */
+  position: fixed;
+  top: 64px; /* Directly below AppBar */
+  left: 0;
+  overflow-y: auto; /* Scrollable Sidebar */
+  background-color: #333; /* Dark gray Sidebar */
+  color: white; /* Text color */
+  z-index: 1100; /* Below AppBar but above main content */
+}
+
+/* You can remove App-header if not needed */
 .App-header {
   background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
 }
@@ -28,6 +117,7 @@
   color: #61dafb;
 }
 
+/* Keyframes for logo animation - adjust if needed */
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
@@ -35,4 +125,18 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Styles for non-authenticated views like Login and SignUp */
+.login-page, .signup-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* Adjustments for when AppBar and Sidebar should not be visible */
+/* E.g., on login and sign-up pages */
+.no-appbar .AppBar, .no-sidebar .Sidebar {
+  display: none;
 }
