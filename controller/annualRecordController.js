@@ -1,3 +1,4 @@
+const { emitAnnualRecordCounts } = require('../websocketServer');
 const AnnualRecord = require('../models/AnnualRecords'); // Ensure this path is correct
 const Establishment = require('../models/Establishment'); // Add this line to import the Establishment model
 
@@ -11,6 +12,8 @@ exports.createAnnualRecord = async (req, res) => {
     
     const record = new AnnualRecord(req.body);
     await record.save();
+    
+    await emitAnnualRecordCounts();
     res.status(201).json(record);
   } catch (error) {
     res.status(400).json({ message: "Error creating annual record: " + error.message });
@@ -61,6 +64,9 @@ exports.updateAnnualRecord = async (req, res) => {
     if (!record) {
       return res.status(404).json({ message: "Annual record not found" });
     }
+
+    await emitAnnualRecordCounts();
+
     res.status(200).json(record);
   } catch (error) {
     res.status(400).json({ message: "Error updating annual record: " + error.message });
@@ -70,12 +76,19 @@ exports.updateAnnualRecord = async (req, res) => {
 exports.deleteAnnualRecord = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`Attempting to delete record with id: ${id}`); // Log the ID being deleted
+
     const result = await AnnualRecord.findByIdAndDelete(id);
-    if (!result) {
-      return res.status(404).json({ message: "Annual record not found" });
+    console.log('Delete operation result:', result); // Log the result of the delete operation
+
+    if (result) {
+      await emitAnnualRecordCounts();
+      res.status(204).send();
+    } else {
+      res.status(404).json({ message: "Annual record not found" });
     }
-    res.status(204).send();
   } catch (error) {
+    console.error('Error during deletion:', error); // Log any errors that occur
     res.status(500).json({ message: "Error deleting annual record: " + error.message });
   }
 };

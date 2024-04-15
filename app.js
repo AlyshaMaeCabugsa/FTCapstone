@@ -5,6 +5,8 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const User = require('./models/userDetails'); 
+const UserProfile = require('./models/userProfile');
 
 const app = express();
 
@@ -22,6 +24,12 @@ const annualRecordsRoutes = require('./routes/annualRecord');
 const inspectionRoutes = require('./routes/inspection'); 
 const staffContactsRouter = require('./routes/staffContacts');
 const pdfRoutes = require('./routes/pdfRoutes');
+const alertsRoutes = require('./routes/alerts');
+const recentInspectionsRoutes = require('./routes/recentInspections');
+const userDataRoutes = require('./routes/userData');
+const userRoutes = require('./routes/userRoutes');
+
+
 
 
 app.use('/api/establishments', establishmentRoutes);
@@ -29,6 +37,14 @@ app.use('/api/annualrecords', annualRecordsRoutes);
 app.use('/api/inspections', inspectionRoutes);
 app.use('/api/staffContacts', staffContactsRouter);
 app.use('/pdf', pdfRoutes);
+app.use('/api/alerts', alertsRoutes);
+app.use('/api/recentInspections', recentInspectionsRoutes);
+app.use('/api', userDataRoutes);
+app.use('/api/users', userRoutes);
+
+
+
+
 
 
 // Database Connection
@@ -40,79 +56,48 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
   });
 
 // Additional Models
-require("./userDetails");
+require("./models/userDetails.js");
 require('./websocketServer');
 require('./services/reminderService.js');
 
 
 
-const User = mongoose.model("UserInfo");
-
-app.post("/register", async (req, res) => {
-  const { fname, lname, email, password, userType } = req.body;
-
-  const encryptedPassword = await bcrypt.hash(password, 10);
-  try {
-    const oldUser = await User.findOne({ email });
-
-    if (oldUser) {
-      return res.json({ error: "User Exists" });
-    }
-    await User.create({
-      fname,
-      lname,
-      email,
-      password: encryptedPassword,
-      userType,
-    });
-    res.send({ status: "ok" });
-  } catch (error) {
-    res.send({ status: "error" });
-  }
-});
+//const User = mongoose.model("UserInfo");
 
 app.post("/login-user", async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findOne({ email });
-  
-  if (!user) {
-    return res.json({ status: "error", error: "User Not found" });
-  }
-  
-  if (await bcrypt.compare(password, user.password)) {
-    const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: "15m",
-    });
-
-    return res.json({ status: "ok", data: token });
-  }
-
-  return res.json({ status: "error", error: "Invalid Password" });
-});
-
-app.post("/userData", async (req, res) => {
-  const { token } = req.body;
-  
   try {
-    // Correctly use the verify method without a callback to use it in a synchronous way
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Now that we have the decoded token, we can find the user based on the email
-    const user = await User.findOne({ email: decoded.email });
+    const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).send({ status: "error", data: "User not found" });
+      return res.status(404).json({ status: "error", error: "User not found" });
     }
 
-    // If user is found, send the user data
-    return res.send({ status: "ok", data: user });
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ status: "error", error: "Invalid password" });
+    }
 
+    const token = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        userType: user.userType,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    return res.json({
+      status: "ok",
+      token: token,
+      userType: user.userType,
+      profileComplete: user.profileComplete,
+      // Send the user ID only if the logged-in user is not an admin
+      userId: user.userType !== 'Admin' ? user._id : undefined,
+    });
   } catch (error) {
-    // If error is thrown from jwt.verify, it will be caught here
-    if (error instanceof jwt.TokenExpiredError) {
-      return res.status(401).send({ status: "error", data: "token expired" });
-    } else {
-      return res.status(500).send({ status: "error", data: "An error occurred" });
-    }
+    console.error("Login error:", error);
+    return res.status(500).json({ status: "error", error: "Internal server error" });
   }
 });
 

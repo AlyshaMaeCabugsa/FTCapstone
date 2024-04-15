@@ -1,18 +1,17 @@
 const InspectionSchedule = require('../models/InspectionSchedule');
 const Establishment = require('../models/Establishment');
-const io = require('../websocketServer'); // Adjust the path to your websocketServer.js file
+const Alert = require('../models/Alert');
+const { io } = require('../websocketServer');
 
 exports.create_inspection_schedule = async (req, res) => {
   try {
     const { establishmentId, date, time } = req.body;
 
-    // Check if the establishment exists
     const establishment = await Establishment.findById(establishmentId);
     if (!establishment) {
       return res.status(404).send({ message: 'Establishment not found.' });
     }
 
-    // Prevent duplicate inspection schedules for the same establishment, date, and time
     const existingSchedule = await InspectionSchedule.findOne({
       establishment: establishmentId,
       date: date,
@@ -20,7 +19,7 @@ exports.create_inspection_schedule = async (req, res) => {
     });
 
     if (existingSchedule) {
-      return res.status(400).send({ message: 'An inspection schedule for this establishment, date, and time already exists.' });
+      return res.status(400).send({ message: 'An inspection schedule already exists for this establishment on the given date and time.' });
     }
 
     const inspectionSchedule = new InspectionSchedule({
@@ -34,24 +33,21 @@ exports.create_inspection_schedule = async (req, res) => {
 
     await inspectionSchedule.save();
 
-    // Emit an event for the new inspection
-    io.emit('inspectionCreated', inspectionSchedule);
+    const populatedInspectionSchedule = await InspectionSchedule.findById(inspectionSchedule._id).populate('establishment');
+    const newAlert = new Alert({
+      message: `New inspection scheduled for ${populatedInspectionSchedule.establishment.tradeName}`,
+      type: 'New Inspection'
+    });
 
-    // Notify admin of successful creation
-    const successMessage = `You have scheduled successfully on ${inspectionSchedule.date}`;
-    io.emit('notifyAdmin', { message: successMessage });
-
-    // Send the response
-    res.status(201).send(inspectionSchedule);
+    await newAlert.save();
+    io.emit('newInspectionAlert', newAlert);
+    res.status(201).send(populatedInspectionSchedule);
   } catch (error) {
     console.error("Error creating inspection schedule:", error);
-    // Enhanced error handling for duplicate key errors
-    if (error.name === 'MongoServerError' && error.code === 11000) {
-      return res.status(400).send({ message: 'A duplicate key error occurred. Please ensure unique values for all fields.' });
-    }
-    res.status(500).send({ message: error.message || 'An error occurred during creation.' });
+    res.status(500).send({ message: error.message });
   }
 };
+
 
 exports.get_all_inspection_schedules = async (req, res, next) => {
   const { status } = req.query;
@@ -109,30 +105,53 @@ exports.update_inspection_schedule = async (req, res) => {
     const schedule = await InspectionSchedule.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
-    ).populate('establishment', 'tradeName address');
+      { new: true } // Directly populate on update
+    );
 
     if (!schedule) {
       return res.status(404).send({ message: 'Inspection Schedule not found.' });
     }
 
-    // If the status is 'Completed', notify the admin
-    if(req.body.status === 'Completed') {
-      const completionMessage = `The inspection for ${schedule.establishment.tradeName} is completed`;
-      io.emit('notifyAdmin', { message: completionMessage });
+    const populatedSchedule = await InspectionSchedule.findById(schedule._id).populate('establishment');
+
+    if (req.body.status === 'Completed' && populatedSchedule.establishment) {
+      // Use populatedSchedule.establishment.tradeName to access the trade name
+      const completionAlert = new Alert({
+        message: `Completed: ${populatedSchedule.establishment.tradeName}`,
+        type: 'Completion',
+        date: new Date(populatedSchedule.date)
+      });
+
+      await completionAlert.save();
+
+      // Now we use the correct populatedSchedule object
+    io.emit('recentInspectionUpdate', {
+        message: `Inspection completed for ${populatedSchedule.establishment.tradeName}`,
+        date: populatedSchedule.date,
+        establishment: populatedSchedule.establishment.tradeName
+      });
+      io.emit('notifyAdmin', completionAlert);
     }
 
-    res.status(200).send(schedule);
+    res.status(200).send(populatedSchedule);
   } catch (error) {
+    console.error("Error updating inspection schedule:", error);
     res.status(500).send({ message: error.message });
   }
 };
 
-exports.delete_inspection_schedule = async (req, res, next) => {
+exports.delete_inspection_schedule = async (req, res) => {
   try {
-    await InspectionSchedule.findByIdAndRemove(req.params.id);
+    const deletedSchedule = await InspectionSchedule.findByIdAndRemove(req.params.id);
     
-    io.emit('inspectionDeleted', { id: req.params.id });
+    if (deletedSchedule) {
+      io.emit('inspectionDeletedAlert', {
+        message: `Inspection for establishment with ID ${req.params.id} has been deleted.`,
+        inspectionId: req.params.id
+      });
+    } else {
+      return res.status(404).send({ message: 'Inspection Schedule not found.' });
+    }
 
     res.status(200).send({ message: 'Inspection Schedule deleted successfully.' });
   } catch (error) {
