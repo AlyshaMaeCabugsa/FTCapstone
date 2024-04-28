@@ -112,9 +112,17 @@ app.post("/login-user", async (req, res) => {
   }
 });
 
-app.listen(5000, () => {
-  console.log("Server Started");
-});
+// app.listen(5000, () => {
+//   console.log("Server Started");
+// });
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(5000, () => {
+    console.log("Server Started");
+  });
+}
+
+
 
 
 
