@@ -1,27 +1,29 @@
+
 const socketIo = require('socket.io');
 require('dotenv').config();
 const http = require('http');
 const mongoose = require('mongoose');
 const AnnualRecord = require('./models/AnnualRecords');
 const InspectionSchedule = require('./models/InspectionSchedule');
+const Establishment = require('./models/Establishment'); // Adjust path if necessary
+
 
 const { scheduleNotifications } = require('./services/notificationSocket');
+
 
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-const server = http.createServer();
+  const server = http.createServer();
 
 // Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
     origin: "*", // Be sure to restrict the origin in production
-    methods: ["GET", "POST"]
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"] 
   }
 });
-
-const Establishment = require('./models/Establishment'); // Adjust path if necessary
 
 // This function emits the total count of establishments
 const emitEstablishmentCount = async () => {
@@ -62,6 +64,14 @@ const emitAnnualRecordCounts = async () => {
     console.error('Error emitting annual record counts:', error);
   }
 };
+
+// Import the setup function for the '/applications' namespace
+const setupApplicationSocketEvents = require('./applicationSockets');
+
+// Set up the '/applications' namespace using the imported setup function
+const applicationSocket = io.of('/applications');
+setupApplicationSocketEvents(applicationSocket);
+
 
 io.on('connection', (socket) => {
   console.log('Client connected to Socket.IO.');
@@ -169,13 +179,15 @@ function setupInspectionScheduleChangeStream(socket) {
   });
 }
 
+scheduleNotifications(io);
+
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`Socket.IO server is running on port ${PORT}`);
 });
 
-scheduleNotifications(io);
+
 
 // Export both io and emitEstablishmentCount at the end of the file
 module.exports = { io, emitEstablishmentCount, emitAnnualRecordCounts };

@@ -7,8 +7,11 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const User = require('./models/userDetails'); 
 const UserProfile = require('./models/userProfile');
+const resetApplications = require('./utils/resetApplication.js');
 
 const app = express();
+
+
 
 // CORS and Body Parsing Middlewares
 app.use(cors({ origin: 'http://localhost:3000' }));
@@ -28,6 +31,9 @@ const alertsRoutes = require('./routes/alerts');
 const recentInspectionsRoutes = require('./routes/recentInspections');
 const userDataRoutes = require('./routes/userData');
 const userRoutes = require('./routes/userRoutes');
+const applicationRoutes = require('./routes/application'); 
+const pdfApplicationRoutes = require('./routes/pdfApplicationRoutes');
+
 
 
 
@@ -41,6 +47,9 @@ app.use('/api/alerts', alertsRoutes);
 app.use('/api/recentInspections', recentInspectionsRoutes);
 app.use('/api', userDataRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api', applicationRoutes);
+app.use('/api', pdfApplicationRoutes);
+
 
 
 
@@ -59,6 +68,8 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 require("./models/userDetails.js");
 require('./websocketServer');
 require('./services/reminderService.js');
+resetApplications();
+
 
 
 
@@ -101,10 +112,11 @@ app.post("/login-user", async (req, res) => {
   }
 });
 
-
 app.listen(5000, () => {
   console.log("Server Started");
 });
+
+
 
 app.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
@@ -190,3 +202,6 @@ app.post("/reset-password/:id/:token", async (req, res) => {
     res.json({ status: "Something Went Wrong" });
   }
 });
+
+
+
